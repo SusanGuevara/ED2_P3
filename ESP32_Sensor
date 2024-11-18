@@ -1,0 +1,83 @@
+#include <Arduino.h>
+#include <Wire.h>
+
+// Dirección I2C del MPU-6050
+const int MPU = 0x68;
+
+// Pines para UART2 en ESP32
+#define RXD2 16
+#define TXD2 17
+
+// Variables para los datos del sensor
+int16_t AccX, AccY, AccZ;
+int16_t GyroX, GyroY, GyroZ;
+
+void setup() {
+  // Inicializamos comunicación serial para monitorización
+  Serial.begin(115200);
+
+  // Inicializamos UART2
+  Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
+
+  // Inicializar I2C
+  Wire.begin();
+
+  // Configurar el MPU-6050
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);  // Dirección del registro PWR_MGMT_1
+  Wire.write(0);     // Despertar el MPU-6050
+  Wire.endTransmission(true);
+
+  Serial.println("MPU-6050 inicializado.");
+}
+
+void loop() {
+  // Leer datos de acelerómetro y giroscopio
+  Wire.beginTransmission(MPU);
+  Wire.write(0x3B); // Dirección del primer registro de datos (ACCEL_XOUT_H)
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU, 14, true); // Solicitar 14 bytes de datos
+
+  // Leer aceleraciones
+  AccX = (Wire.read() << 8 | Wire.read());
+  AccY = (Wire.read() << 8 | Wire.read());
+  AccZ = (Wire.read() << 8 | Wire.read());
+
+  // Leer giroscopios
+  GyroX = (Wire.read() << 8 | Wire.read());
+  GyroY = (Wire.read() << 8 | Wire.read());
+  GyroZ = (Wire.read() << 8 | Wire.read());
+
+  // Variables para almacenar los valores formateados
+  char formattedAccX[6]; // 5 dígitos + terminador nulo
+  char formattedGyroY[6];
+
+  // Formatear los valores con ceros a la izquierda
+  sprintf(formattedAccX, "%05d", AccX);
+  sprintf(formattedGyroY, "%05d", GyroY);
+
+// Imprimir los datos en el monitor serie
+  Serial.print("Aceleracion: X=");
+  Serial.print(formattedAccX);
+  Serial.print(" Y=");
+  Serial.print(AccY);
+  Serial.print(" Z=");
+  Serial.println(AccZ);
+
+  Serial.print("Giroscopio: X=");
+  Serial.print(GyroX);
+  Serial.print(" Y=");
+  Serial.print(formattedGyroY);
+  Serial.print(" Z=");
+  Serial.println(GyroZ);
+
+  // Enviar los datos a través de UART2
+  Serial2.print("Aceleracion: ");
+  Serial2.print(formattedAccX);
+
+  Serial2.print(" Giroscopio: ");
+  Serial2.println(formattedGyroY);
+
+  // Esperar medio segundo antes de la siguiente lectura
+  delay(500);
+}
