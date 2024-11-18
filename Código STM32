@@ -44,6 +44,7 @@ FRESULT fres;
 DWORD fre_clust;
 uint32_t totalSpace, freeSpace;
 char buffer[100];
+#define deviceAddress 0x55
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -77,6 +78,8 @@ char valorPrint[100];
 uint32_t valorSensor=0;
 // Variable que guarda la conversión del valor del sensor a tipo texto
 char valorPantalla[10];
+// Variable que guarda el estado del neopixel
+uint8_t neopixel[0];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -150,23 +153,35 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  // Solicita el dato al ESP32 por medio de UART1 HAL_UART_Receive(&huart1, buffer, 2, 1000);
+	  neopixel[0]=1;
+	  HAL_UART_Transmit(&huart3, neopixel, 1, HAL_MAX_DELAY);
+	  HAL_Delay(2000);
 	  // Imprimer el dato obtenido del ESP32 por medio de UART2
 	  if(cambioEstadoBTN1==1){
 		  // Notifica al usuario la opción que ha escogido
-		  HAL_UART_Transmit(&huart2, resp1, sizeof(resp1), HAL_MAX_DELAY);
-		  valorSensor=7;
+		  HAL_UART_Transmit(&huart2, resp1,sizeof(resp1) , HAL_MAX_DELAY);
+		  // Envía solicitud de datos al ESP32 a través de UART2
+		  HAL_UART_Receive(&huart3, bufferBTN, sizeof(bufferBTN), 500);
+		  // Envía los datos recibidos del ESP32 a UART2 para mostrarlos
+		  HAL_UART_Transmit(&huart2, bufferBTN, sizeof(bufferBTN), HAL_MAX_DELAY);
+		  neopixel[0]=2;
+		  //Transmite el dato que hace que se encienda el neopixel
+		  HAL_UART_Transmit(&huart3, neopixel, 1, HAL_MAX_DELAY);
+		  HAL_Delay(2000);
 		  // Conversión de tipo uint a char para que se muestre en la pantalla
-		  sprintf(valorPantalla, "%lu", valorSensor);
+		  //sprintf(valorPantalla, "%lu", (unsigned long int)(*bufferBTN));
 		  // Muestra en la pantalla ili9341
-		  LCD_Print(valorPantalla, 100, 100, 2, 0x0000, 0xffff);
+		  LCD_Print((char*)bufferBTN, 100, 100, 2, 0x0000, 0xffff);
 		  // Reinicia el estado del botón
 		  cambioEstadoBTN1=0;
 	  }
 	  // Guarda el dato obtenido del ESP32 en la memoria por medio de SPI
 	  if(cambioEstadoBTN2==1){
-		  sprintf(valorPrint, "El valor del sensor I2C es: %lu\r\n", valorSensor);
+		  sprintf(valorPrint, "El valor del sensor I2C es: %s\r\n", bufferBTN);
 		  HAL_Delay(500);
+		  neopixel[0]=3;
+		  HAL_UART_Transmit(&huart3, neopixel, 1, HAL_MAX_DELAY);
+		  HAL_Delay(2000);
 		  // Montar SD
 		  fres = f_mount(&fs, "/", 0);
 		  if (fres == FR_OK) {
