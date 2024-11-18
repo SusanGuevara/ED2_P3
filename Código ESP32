@@ -17,8 +17,6 @@ Proyecto 3
 #include <HardwareSerial.h>     // Permite la transmisión de datos con la STM32
 
 /********** DEFINICIÓN DE PINES ********/
-// Pin donde está conectado el sensor I2C
-
 // Configuración del neopixel
 #define neopin 12
 #define numeroPixel 16
@@ -26,7 +24,22 @@ Proyecto 3
 // Configurar el puerto UART en ESP32
 HardwareSerial UART_ESP32(2);  // UART2
 
+// Dirección I2C del MPU-6050
+const int MPU = 0x68;
+
+// Pines para UART2 en ESP32
+#define RXD2 16
+#define TXD2 17
+
 Adafruit_NeoPixel pixels(numeroPixel, neopin, NEO_GRB + NEO_KHZ800);
+
+// Variables para los datos del sensor
+int16_t AccX, AccY, AccZ;
+int16_t GyroX, GyroY, GyroZ;
+
+// Variables para los datos mapeados
+uint8_t MappedAccX, MappedAccY, MappedAccZ;
+uint8_t MappedGyroX, MappedGyroY, MappedGyroZ;
 
 /********** PROTOTIPOS DE FUNCIONES ********/
 
@@ -35,18 +48,75 @@ void setup() {
   // Para monitorear desde el puerto serie (UART0)
   Serial.begin(9600);  
   // Iniciar UART2 a: 115200 baudios, configuración de datos, pin RX, pin TX
-  UART_ESP32.begin(115200, SERIAL_8N1, 16, 17); 
+  UART_ESP32.begin(115200, SERIAL_8N1, RXD2, TXD2); 
   // Definición del Neopixel como salida
   pixels.begin();
   pixels.clear();
   pixels.setBrightness(200);
+  
+  // Inicializar I2C
+  Wire.begin();
 
-  Serial.println("Prueba de comunicación UART");
+  // Configurar el MPU-6050
+  Wire.beginTransmission(MPU);
+  Wire.write(0x6B);  // Dirección del registro PWR_MGMT_1
+  Wire.write(0);     // Despertar el MPU-6050
+  Wire.endTransmission(true);
+
+  Serial.println("MPU-6050 inicializado.");
 }
 
 void loop() {
   // Revisa si hay datos disponibles en UART2
   if (UART_ESP32.available()) {
+      // Leer datos de acelerómetro y giroscopio
+      Wire.beginTransmission(MPU);
+      Wire.write(0x3B); // Dirección del primer registro de datos (ACCEL_XOUT_H)
+      Wire.endTransmission(false);
+      Wire.requestFrom((uint16_t)MPU, (uint8_t)14, true);
+
+      // Leer aceleraciones
+      AccX = (Wire.read() << 8 | Wire.read());
+      AccY = (Wire.read() << 8 | Wire.read());
+      AccZ = (Wire.read() << 8 | Wire.read());
+
+      // Leer giroscopios
+      GyroX = (Wire.read() << 8 | Wire.read());
+      GyroY = (Wire.read() << 8 | Wire.read());
+      GyroZ = (Wire.read() << 8 | Wire.read());
+
+      // Mapear los valores al rango de 0 a 9
+      MappedAccX = map(AccX, -32768, 32767, 0, 9);
+      MappedAccY = map(AccY, -32768, 32767, 0, 9);
+      MappedAccZ = map(AccZ, -32768, 32767, 0, 9);
+
+      MappedGyroX = map(GyroX, -32768, 32767, 0, 9);
+      MappedGyroY = map(GyroY, -32768, 32767, 0, 9);
+      MappedGyroZ = map(GyroZ, -32768, 32767, 0, 9);
+
+  // Imprimir los valores mapeados en el monitor serie
+  Serial.print("Mapped Aceleracion: X=");
+  Serial.print(MappedAccX);
+  Serial.print(" Y=");
+  Serial.print(MappedAccY);
+  Serial.print(" Z=");
+  Serial.println(MappedAccZ);
+
+  Serial.print("Mapped Giroscopio: X=");
+  Serial.print(MappedGyroX);
+  Serial.print(" Y=");
+  Serial.print(MappedGyroY);
+  Serial.print(" Z=");
+  Serial.println(MappedGyroZ);
+
+  // Enviar los valores mapeados a través de UART2
+  UART_ESP32.print(MappedAccX);
+  UART_ESP32.print(",");
+  UART_ESP32.println(MappedGyroY);
+
+  // Esperar medio segundo antes de la siguiente lectura
+  delay(500);
+
     uint8_t incomingByte = UART_ESP32.read();  // Lee un byte desde UART2
     Serial.print("Recibido por UART2: ");
     Serial.println(incomingByte);
@@ -54,26 +124,26 @@ void loop() {
     switch(incomingByte){
         case 1:
           for (int i = 0; i < numeroPixel; i++) {
-            pixels.setPixelColor(i, pixels.Color(0, 31, 14)); 
+            pixels.setPixelColor(i, pixels.Color(255, 0, 0)); 
           }
           pixels.show();
-          Serial.println("LED cambiado a azul");
+          Serial.println("LED cambiado a rojo");
           delay(1000);
           break;
         case 2:
           for (int i = 0; i < numeroPixel; i++) {
-            pixels.setPixelColor(i, pixels.Color(29, 58, 2)); 
+            pixels.setPixelColor(i, pixels.Color(0, 255, 0)); 
           }
           pixels.show();
-          Serial.println("LED cambiado a amarillo");
+          Serial.println("LED cambiado a verde");
           delay(1000);
           break;
         case 3:
           for (int i = 0; i < numeroPixel; i++) {
-            pixels.setPixelColor(i, pixels.Color(0, 50, 14)); 
+            pixels.setPixelColor(i, pixels.Color(0, 0, 255)); 
           }
           pixels.show();
-          Serial.println("LED cambiado a verde");
+          Serial.println("LED cambiado a azul");
           delay(1000);
           break; 
         default:
