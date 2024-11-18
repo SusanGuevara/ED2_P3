@@ -12,8 +12,9 @@ Proyecto 3
 
 /********** LIBRERÍAS *********/
 #include <Arduino.h>
-#include "Wire.h" // Librería para la comunicación I2C
-#include <Adafruit_NeoPixel.h> // Librería para el neopixel
+#include "Wire.h"               // Librería para la comunicación I2C
+#include <Adafruit_NeoPixel.h>  // Librería para el neopixel
+#include <HardwareSerial.h>     // Permite la transmisión de datos con la STM32
 
 /********** DEFINICIÓN DE PINES ********/
 // Pin donde está conectado el sensor I2C
@@ -22,17 +23,20 @@ Proyecto 3
 #define neopin 12
 #define numeroPixel 16
 
+// Configurar el puerto UART en ESP32
+HardwareSerial UART_ESP32(2);  // UART2
+
 Adafruit_NeoPixel pixels(numeroPixel, neopin, NEO_GRB + NEO_KHZ800);
 
 /********** PROTOTIPOS DE FUNCIONES ********/
 
 /********** CONFIGURACIÓN INICIAL DE LOS PINES ********/
 void setup() {
-  // INICIALIZACIÓN DE SPI
-  // Inicia la comunicación serie
-  Serial.begin(115200);
-  delay(2000);
- // Definición del Neopixel como salida
+  // Para monitorear desde el puerto serie (UART0)
+  Serial.begin(9600);  
+  // Iniciar UART2 a: 115200 baudios, configuración de datos, pin RX, pin TX
+  UART_ESP32.begin(115200, SERIAL_8N1, 16, 17); 
+  // Definición del Neopixel como salida
   pixels.begin();
   pixels.clear();
   pixels.setBrightness(200);
@@ -41,24 +45,40 @@ void setup() {
 }
 
 void loop() {
-  /*// Revisa si hay datos disponibles desde UART
-  if (Serial.available()) {
-    uint8_t incomingByte = Serial.read();  // Lee un byte de datos
-    Serial.print("Recibido por UART: ");
+  // Revisa si hay datos disponibles en UART2
+  if (UART_ESP32.available()) {
+    uint8_t incomingByte = UART_ESP32.read();  // Lee un byte desde UART2
+    Serial.print("Recibido por UART2: ");
     Serial.println(incomingByte);
 
-    // Procesa el comando recibido por UART (por ejemplo, '1', '2', '3')
-    if (incomingByte == 49) {
-      // Realiza alguna acción, como cambiar el color de un LED
-      pixels.setPixelColor(15, pixels.Color(255, 0, 0)); // Rojo
-      pixels.show();
-    } else if (incomingByte == 50) {
-      // Realiza otra acción
-      pixels.setPixelColor(15, pixels.Color(0, 255, 0)); // Verde
-      pixels.show();
+    switch(incomingByte){
+        case 1:
+          for (int i = 0; i < numeroPixel; i++) {
+            pixels.setPixelColor(i, pixels.Color(0, 31, 14)); 
+          }
+          pixels.show();
+          Serial.println("LED cambiado a azul");
+          delay(1000);
+          break;
+        case 2:
+          for (int i = 0; i < numeroPixel; i++) {
+            pixels.setPixelColor(i, pixels.Color(29, 58, 2)); 
+          }
+          pixels.show();
+          Serial.println("LED cambiado a amarillo");
+          delay(1000);
+          break;
+        case 3:
+          for (int i = 0; i < numeroPixel; i++) {
+            pixels.setPixelColor(i, pixels.Color(0, 50, 14)); 
+          }
+          pixels.show();
+          Serial.println("LED cambiado a verde");
+          delay(1000);
+          break; 
+        default:
+          Serial.println("Comando no reconocido.");
+          break;
     }
-  }*/
+  }
 }
-
-/********* DEFINICIÓN DE FUNCIONES ********/
-
