@@ -1,1 +1,64 @@
+/*
+Universidad Del Valle de Guatemala
+Facultad de Ingeniería
+Departamento de Electrónica, Mecatrónica y Biomédica
+Electrónica Digital 2
+
+Carlos Daniel Camacho Tista - 22690
+Susan Daniela Guevara Catalán - 22519
+
+Proyecto 3
+*/
+
+/********** LIBRERÍAS *********/
+#include <Arduino.h>
+#include "Wire.h" // Librería para la comunicación I2C
+#include <Adafruit_NeoPixel.h> // Librería para el neopixel
+
+/********** DEFINICIÓN DE PINES ********/
+// Pin donde está conectado el sensor I2C
+
+// Configuración del neopixel
+#define neopin 12
+#define numeroPixel 16
+
+Adafruit_NeoPixel pixels(numeroPixel, neopin, NEO_GRB + NEO_KHZ800);
+
+/********** PROTOTIPOS DE FUNCIONES ********/
+
+/********** CONFIGURACIÓN INICIAL DE LOS PINES ********/
+void setup() {
+  // INICIALIZACIÓN DE SPI
+  // Inicia la comunicación serie
+  Serial.begin(115200);
+  delay(2000);
+ // Definición del Neopixel como salida
+  pixels.begin();
+  pixels.clear();
+  pixels.setBrightness(200);
+
+  Serial.println("Prueba de comunicación UART");
+}
+
+void loop() {
+  /*// Revisa si hay datos disponibles desde UART
+  if (Serial.available()) {
+    uint8_t incomingByte = Serial.read();  // Lee un byte de datos
+    Serial.print("Recibido por UART: ");
+    Serial.println(incomingByte);
+
+    // Procesa el comando recibido por UART (por ejemplo, '1', '2', '3')
+    if (incomingByte == 49) {
+      // Realiza alguna acción, como cambiar el color de un LED
+      pixels.setPixelColor(15, pixels.Color(255, 0, 0)); // Rojo
+      pixels.show();
+    } else if (incomingByte == 50) {
+      // Realiza otra acción
+      pixels.setPixelColor(15, pixels.Color(0, 255, 0)); // Verde
+      pixels.show();
+    }
+  }*/
+}
+
+/********* DEFINICIÓN DE FUNCIONES ********/
 
