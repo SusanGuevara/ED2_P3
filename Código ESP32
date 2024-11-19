@@ -15,6 +15,8 @@ Proyecto 3
 #include "Wire.h"               // Librería para la comunicación I2C
 #include <Adafruit_NeoPixel.h>  // Librería para el neopixel
 #include <HardwareSerial.h>     // Permite la transmisión de datos con la STM32
+#include "BluetoothSerial.h" // Librería para Bluetooth Serial
+
 
 /********** DEFINICIÓN DE PINES ********/
 // Configuración del neopixel
@@ -26,6 +28,9 @@ HardwareSerial UART_ESP32(2);  // UART2
 
 // Dirección I2C del MPU-6050
 const int MPU = 0x68;
+
+// Crear una instancia para Bluetooth
+BluetoothSerial SerialBT;
 
 // Pines para UART2 en ESP32
 #define RXD2 16
@@ -40,6 +45,7 @@ int16_t GyroX, GyroY, GyroZ;
 // Variables para los datos mapeados
 uint8_t MappedAccX, MappedAccY, MappedAccZ;
 uint8_t MappedGyroX, MappedGyroY, MappedGyroZ;
+uint8_t MappedAccXB, MappedAccYB, MappedAccZB;
 
 /********** PROTOTIPOS DE FUNCIONES ********/
 
@@ -47,6 +53,10 @@ uint8_t MappedGyroX, MappedGyroY, MappedGyroZ;
 void setup() {
   // Para monitorear desde el puerto serie (UART0)
   Serial.begin(9600);  
+   // Inicializar Bluetooth con un nombre
+  SerialBT.begin("ESP32_Bluetooth_1"); // Cambia "ESP32_Bluetooth" por el nombre deseado
+  Serial.println("Bluetooth inicializado. Conéctate a 'ESP32_Bluetooth'.");
+
   // Iniciar UART2 a: 115200 baudios, configuración de datos, pin RX, pin TX
   UART_ESP32.begin(115200, SERIAL_8N1, RXD2, TXD2); 
   // Definición del Neopixel como salida
@@ -111,8 +121,6 @@ void loop() {
 
   // Enviar los valores mapeados a través de UART2
   UART_ESP32.print(MappedAccX);
-  UART_ESP32.print(",");
-  UART_ESP32.println(MappedGyroY);
 
   // Esperar medio segundo antes de la siguiente lectura
   delay(500);
@@ -151,4 +159,45 @@ void loop() {
           break;
     }
   }
+
+  // Verificar si hay datos recibidos desde el terminal Bluetooth
+  if (SerialBT.available()) {
+    String command = SerialBT.readStringUntil('\n'); // Leer comando enviado por Bluetooth
+    command.trim(); // Eliminar espacios o caracteres no deseados
+
+    // Comprobar si el comando es "GET"
+    if (command.equalsIgnoreCase("GET")) {
+      // Leer datos del acelerómetro
+      Wire.beginTransmission(MPU);
+      Wire.write(0x3B); // Dirección del primer registro de datos (ACCEL_XOUT_H)
+      Wire.endTransmission(false);
+      Wire.requestFrom((uint16_t)MPU, (uint8_t)14, true); // Solicitar 6 bytes de datos (solo aceleración)
+
+      // Leer aceleración en X, Y, Z
+      AccX = (Wire.read() << 8 | Wire.read());
+      AccY = (Wire.read() << 8 | Wire.read());
+      AccZ = (Wire.read() << 8 | Wire.read());
+
+      MappedAccXB = map(AccX, -32768, 32767, 0, 9);
+      MappedAccYB = map(AccY, -32768, 32767, 0, 9);
+      MappedAccZB = map(AccZ, -32768, 32767, 0, 9);
+
+      // Enviar el valor de AccX por Bluetooth
+      SerialBT.print("AccX: ");
+      SerialBT.println(MappedAccXB);
+
+      // También imprimirlo en el monitor serie
+      Serial.print("Comando recibido: ");
+      Serial.print(command);
+      Serial.print(" -> AccX: ");
+      Serial.println(MappedAccXB);
+    } else {
+      // Respuesta si el comando no es válido
+      SerialBT.println("Comando no reconocido. Usa 'GET' para obtener datos.");
+    }
+  }
+
+  // Agregar un pequeño retardo para evitar saturar la comunicación
+  delay(100);
+
 }
